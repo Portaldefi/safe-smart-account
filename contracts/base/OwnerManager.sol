@@ -123,7 +123,7 @@ abstract contract OwnerManager is IOwnerManager {
             threshold = newThreshold;
             ownersNonce++;
             
-            emit UpdatedOwners(newOwners);
+            emit UpdatedOwners(newOwners, newThreshold);
         }
     }
 

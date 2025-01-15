@@ -6,7 +6,7 @@ pragma solidity >=0.7.0 <0.9.0;
  * @author @safe-global/safe-protocol
  */
 interface IOwnerManager {
-    event UpdatedOwners(address[] owners);
+    event UpdatedOwners(address[] owners, uint256 threshold);
 
     /**
      * @notice Updates the list of owners and threshold if enough current owners approve
