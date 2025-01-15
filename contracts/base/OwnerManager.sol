@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity >=0.7.0 <0.9.0;
-import {SelfAuthorized} from "../common/SelfAuthorized.sol";
 import {IOwnerManager} from "../interfaces/IOwnerManager.sol";
 
 /**
@@ -10,7 +9,7 @@ import {IOwnerManager} from "../interfaces/IOwnerManager.sol";
  * @author Stefan George - @Georgi87
  * @author Richard Meissner - @rmeissner
  */
-abstract contract OwnerManager is SelfAuthorized, IOwnerManager {
+abstract contract OwnerManager is IOwnerManager {
     // SENTINEL_OWNERS is used to traverse `owners`, so that:
     //      1. `owners[SENTINEL_OWNERS]` contains the first owner
     //      2. `owners[last_owner]` points back to SENTINEL_OWNERS
@@ -19,6 +18,8 @@ abstract contract OwnerManager is SelfAuthorized, IOwnerManager {
     mapping(address => address) internal owners;
     uint256 internal ownerCount;
     uint256 internal threshold;
+    uint256 private ownersNonce;
+    mapping(address => mapping(bytes32 => uint256)) public override approvedOwnersHashes;
 
     /**
      * @notice Sets the initial storage of the contract.
@@ -28,11 +29,11 @@ abstract contract OwnerManager is SelfAuthorized, IOwnerManager {
     function setupOwners(address[] memory _owners, uint256 _threshold) internal {
         // Threshold can only be 0 at initialization.
         // Check ensures that the setup function can only be called once.
-        if (threshold > 0) revertWithError("GS200");
+        if (threshold > 0) revertWithInternalError("GS500");
         // Validate that the threshold is smaller than the number of added owners.
-        if (_threshold > _owners.length) revertWithError("GS201");
+        if (_threshold > _owners.length) revertWithInternalError("GS501");
         // There has to be at least one Safe owner.
-        if (_threshold == 0) revertWithError("GS202");
+        if (_threshold == 0) revertWithInternalError("GS502");
         // Initializing Safe owners.
         address currentOwner = SENTINEL_OWNERS;
         uint256 ownersLength = _owners.length;
@@ -40,9 +41,9 @@ abstract contract OwnerManager is SelfAuthorized, IOwnerManager {
             // Owner address cannot be null.
             address owner = _owners[i];
             if (owner == address(0) || owner == SENTINEL_OWNERS || owner == address(this) || currentOwner == owner)
-                revertWithError("GS203");
+                revertWithInternalError("GS503");
             // No duplicate owners allowed.
-            if (owners[owner] != address(0)) revertWithError("GS204");
+            if (owners[owner] != address(0)) revertWithInternalError("GS504");
             owners[currentOwner] = owner;
             currentOwner = owner;
         }
@@ -52,68 +53,107 @@ abstract contract OwnerManager is SelfAuthorized, IOwnerManager {
     }
 
     /**
-     * @inheritdoc IOwnerManager
+     * @notice Updates the list of owners and threshold if enough current owners approve
+     * @param newThreshold New threshold for transactions
+     * @param newOwners New sorted list of owners
+     * @param signature Signature of the owner calling the function
      */
-    function addOwnerWithThreshold(address owner, uint256 _threshold) public override authorized {
-        // Owner address cannot be null, the sentinel or the Safe itself.
-        if (owner == address(0) || owner == SENTINEL_OWNERS || owner == address(this)) revertWithError("GS203");
-        // No duplicate owners allowed.
-        if (owners[owner] != address(0)) revertWithError("GS204");
-        owners[owner] = owners[SENTINEL_OWNERS];
-        owners[SENTINEL_OWNERS] = owner;
-        ++ownerCount;
-        emit AddedOwner(owner);
-        // Change threshold if threshold was changed.
-        if (threshold != _threshold) changeThreshold(_threshold);
+    function updateOwners(
+        uint256 newThreshold,
+        address[] calldata newOwners,
+        bytes calldata signature
+    ) public override {
+        // Verify caller is current owner
+        if (!isOwner(msg.sender)) revertWithInternalError("GS505");
+        
+        // Verify new owners list is not empty
+        if (newOwners.length == 0) revertWithInternalError("GS506");
+        
+        // Verify new threshold is valid
+        if (newThreshold == 0 || newThreshold > newOwners.length) revertWithInternalError("GS507");
+        
+        // Verify list is sorted
+        for (uint256 i = 1; i < newOwners.length; i++) {
+            if (newOwners[i] <= newOwners[i-1]) revertWithInternalError("GS508");
+        }
+        
+        // Create hash of update
+        bytes32 updateHash = keccak256(abi.encodePacked(ownersNonce, newThreshold, newOwners));
+        
+        // Verify signature
+        address signer = recoverSigner(updateHash, signature);
+        if (signer != msg.sender) revertWithInternalError("GS509");
+        
+        // Record approval
+        approvedOwnersHashes[msg.sender][updateHash] = 1;
+        
+        // Count approvals
+        uint256 approvalCount;
+        address currentOwner = owners[SENTINEL_OWNERS];
+        while (currentOwner != SENTINEL_OWNERS) {
+            if (approvedOwnersHashes[currentOwner][updateHash] == 1) {
+                approvalCount++;
+            }
+            currentOwner = owners[currentOwner];
+        }
+        
+        // If threshold reached, update owners
+        if (approvalCount >= threshold) {
+            // Reset old owners
+            currentOwner = owners[SENTINEL_OWNERS];
+            while (currentOwner != SENTINEL_OWNERS) {
+                address nextOwner = owners[currentOwner];
+                owners[currentOwner] = address(0);
+                currentOwner = nextOwner;
+            }
+            
+            // Set new owners
+            currentOwner = SENTINEL_OWNERS;
+            for (uint256 i = 0; i < newOwners.length; i++) {
+                address owner = newOwners[i];
+                if (owner == address(0) || owner == SENTINEL_OWNERS || owner == address(this))
+                    revertWithInternalError("GS510");
+                owners[currentOwner] = owner;
+                currentOwner = owner;
+            }
+            owners[currentOwner] = SENTINEL_OWNERS;
+            
+            // Update state
+            ownerCount = newOwners.length;
+            threshold = newThreshold;
+            ownersNonce++;
+            
+            emit UpdatedOwners(newOwners);
+        }
     }
 
     /**
-     * @inheritdoc IOwnerManager
+     * @notice Recovers the signer from a signature
+     * @param hash Hash that was signed
+     * @param signature Signature bytes
+     * @return Signer address
      */
-    function removeOwner(address prevOwner, address owner, uint256 _threshold) public override authorized {
-        // Only allow to remove an owner, if threshold can still be reached.
-        // Here we do pre-decrement as it is cheaper and allows us to check if the threshold is still reachable.
-        if (--ownerCount < _threshold) revertWithError("GS201");
-        // Validate owner address and check that it corresponds to owner index.
-        if (owner == address(0) || owner == SENTINEL_OWNERS) revertWithError("GS203");
-        if (owners[prevOwner] != owner) revertWithError("GS205");
-        owners[prevOwner] = owners[owner];
-        owners[owner] = address(0);
-        emit RemovedOwner(owner);
-        // Change threshold if threshold was changed.
-        if (threshold != _threshold) changeThreshold(_threshold);
+    function recoverSigner(bytes32 hash, bytes memory signature) internal pure returns (address) {
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        
+        if (signature.length != 65) revertWithInternalError("GS511");
+        
+        assembly {
+            r := mload(add(signature, 32))
+            s := mload(add(signature, 64))
+            v := byte(0, mload(add(signature, 96)))
+        }
+        
+        if (v < 27) v += 27;
+        if (v != 27 && v != 28) revertWithInternalError("GS512");
+        
+        return ecrecover(hash, v, r, s);
     }
 
-    /**
-     * @inheritdoc IOwnerManager
-     */
-    function swapOwner(address prevOwner, address oldOwner, address newOwner) public override authorized {
-        // Owner address cannot be null, the sentinel or the Safe itself.
-        if (newOwner == address(0) || newOwner == SENTINEL_OWNERS || newOwner == address(this)) revertWithError("GS203");
-        // No duplicate owners allowed.
-        if (owners[newOwner] != address(0)) revertWithError("GS204");
-        // Validate oldOwner address and check that it corresponds to owner index.
-        if (oldOwner == address(0) || oldOwner == SENTINEL_OWNERS) revertWithError("GS203");
-        if (owners[prevOwner] != oldOwner) revertWithError("GS205");
-        owners[newOwner] = owners[oldOwner];
-        owners[prevOwner] = newOwner;
-        owners[oldOwner] = address(0);
-        emit RemovedOwner(oldOwner);
-        emit AddedOwner(newOwner);
-    }
-
-    /**
-     * @inheritdoc IOwnerManager
-     */
-    function changeThreshold(uint256 _threshold) public override authorized {
-        // Validate that threshold is smaller than number of owners.
-        if (_threshold > ownerCount) revertWithError("GS201");
-        // There has to be at least one Safe owner.
-        if (_threshold == 0) revertWithError("GS202");
-        threshold = _threshold;
-        emit ChangedThreshold(_threshold);
-    }
-
+    // [Previous view functions remain unchanged: getThreshold, isOwner, getOwners]
+    
     /**
      * @inheritdoc IOwnerManager
      */
@@ -143,5 +183,24 @@ abstract contract OwnerManager is SelfAuthorized, IOwnerManager {
             ++index;
         }
         return array;
+    }
+
+    /**
+     * @notice Function which uses assembly to revert with the passed error message.
+     * @param error The error string to revert with.
+     * @dev Currently it is expected that the `error` string is at max 5 bytes of length. Ex: "GSXXX"
+     */
+    function revertWithInternalError(bytes5 error) internal pure {
+        /* solhint-disable no-inline-assembly */
+        /// @solidity memory-safe-assembly
+        assembly {
+            let ptr := mload(0x40)
+            mstore(ptr, 0x08c379a000000000000000000000000000000000000000000000000000000000) // Selector for method "Error(string)"
+            mstore(add(ptr, 0x04), 0x20) // String offset
+            mstore(add(ptr, 0x24), 0x05) // Revert reason length (5 bytes for bytes5)
+            mstore(add(ptr, 0x44), error) // Revert reason
+            revert(ptr, 0x64) // Revert data length is 4 bytes for selector + offset + error length + error.
+        }
+        /* solhint-enable no-inline-assembly */
     }
 }
