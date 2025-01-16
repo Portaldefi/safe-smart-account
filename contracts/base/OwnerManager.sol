@@ -18,7 +18,7 @@ abstract contract OwnerManager is IOwnerManager {
     mapping(address => address) internal owners;
     uint256 internal ownerCount;
     uint256 internal threshold;
-    uint256 private ownersNonce;
+    uint256 public ownersNonce;
     mapping(address => mapping(bytes32 => uint256)) public override approvedOwnersHashes;
 
     /**
