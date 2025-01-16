@@ -121,7 +121,10 @@ abstract contract OwnerManager is IOwnerManager {
             // Update state
             ownerCount = newOwners.length;
             threshold = newThreshold;
-            ownersNonce++;
+
+            unchecked {
+                ownersNonce++;
+            }
             
             emit UpdatedOwners(newOwners, newThreshold);
         }
