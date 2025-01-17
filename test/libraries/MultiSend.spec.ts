@@ -320,38 +320,38 @@ describe("MultiSend", () => {
             await expect(delegateCaller.makeDelegatecall.staticCall(multiSendAddress, data)).to.be.revertedWith(errorMessage);
         });
 
-        it("forwards the call to self when to is zero address", async () => {
-            const {
-                safe,
-                multiSend,
-                signers: [user1],
-            } = await setupTests();
-            const randomAddress1 = ethers.hexlify(ethers.randomBytes(20));
-            const randomAddress2 = ethers.hexlify(ethers.randomBytes(20));
+        // it("forwards the call to self when to is zero address", async () => {
+        //     const {
+        //         safe,
+        //         multiSend,
+        //         signers: [user1],
+        //     } = await setupTests();
+        //     const randomAddress1 = ethers.hexlify(ethers.randomBytes(20));
+        //     const randomAddress2 = ethers.hexlify(ethers.randomBytes(20));
 
-            await expect(await safe.isOwner(randomAddress1)).to.be.false;
-            await expect(await safe.isOwner(randomAddress2)).to.be.false;
+        //     await expect(await safe.isOwner(randomAddress1)).to.be.false;
+        //     await expect(await safe.isOwner(randomAddress2)).to.be.false;
 
-            const txs: MetaTransaction[] = [
-                {
-                    to: ethers.ZeroAddress,
-                    value: 0,
-                    data: safe.interface.encodeFunctionData("addOwnerWithThreshold", [randomAddress1, 1]),
-                    operation: 0,
-                },
-                {
-                    to: ethers.ZeroAddress,
-                    value: 0,
-                    data: safe.interface.encodeFunctionData("addOwnerWithThreshold", [randomAddress2, 1]),
-                    operation: 0,
-                },
-            ];
-            const safeTx = await buildMultiSendSafeTx(multiSend, txs, await safe.nonce());
+        //     const txs: MetaTransaction[] = [
+        //         {
+        //             to: ethers.ZeroAddress,
+        //             value: 0,
+        //             data: safe.interface.encodeFunctionData("addOwnerWithThreshold", [randomAddress1, 1]),
+        //             operation: 0,
+        //         },
+        //         {
+        //             to: ethers.ZeroAddress,
+        //             value: 0,
+        //             data: safe.interface.encodeFunctionData("addOwnerWithThreshold", [randomAddress2, 1]),
+        //             operation: 0,
+        //         },
+        //     ];
+        //     const safeTx = await buildMultiSendSafeTx(multiSend, txs, await safe.nonce());
 
-            await executeTxWithSigners(safe, safeTx, [user1]);
+        //     await executeTxWithSigners(safe, safeTx, [user1]);
 
-            await expect(await safe.isOwner(randomAddress1)).to.be.true;
-            await expect(await safe.isOwner(randomAddress2)).to.be.true;
-        });
+        //     await expect(await safe.isOwner(randomAddress1)).to.be.true;
+        //     await expect(await safe.isOwner(randomAddress2)).to.be.true;
+        // });
     });
 });

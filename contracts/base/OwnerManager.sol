@@ -122,9 +122,7 @@ abstract contract OwnerManager is IOwnerManager {
             ownerCount = newOwners.length;
             threshold = newThreshold;
 
-            unchecked {
-                ownersNonce++;
-            }
+            ownersNonce++;
             
             emit UpdatedOwners(newOwners, newThreshold);
         }
@@ -143,6 +141,7 @@ abstract contract OwnerManager is IOwnerManager {
         
         if (signature.length != 65) revertWithInternalError("GS511");
         
+        bytes32 ethSignedMessageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
         assembly {
             r := mload(add(signature, 32))
             s := mload(add(signature, 64))
@@ -152,7 +151,7 @@ abstract contract OwnerManager is IOwnerManager {
         if (v < 27) v += 27;
         if (v != 27 && v != 28) revertWithInternalError("GS512");
         
-        return ecrecover(hash, v, r, s);
+        return ecrecover(ethSignedMessageHash, v, r, s);
     }
 
     // [Previous view functions remain unchanged: getThreshold, isOwner, getOwners]

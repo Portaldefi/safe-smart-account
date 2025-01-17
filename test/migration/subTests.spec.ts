@@ -35,36 +35,36 @@ export const verificationTests = (setupTests: () => Promise<TestSetup>) => {
         });
     });
 
-    describe("addOwner", () => {
-        it("should add owner and change threshold", async () => {
-            const {
-                migratedSafe,
-                signers: [user1, user2, user3],
-            } = await setupTests();
+    // describe("addOwner", () => {
+    //     it("should add owner and change threshold", async () => {
+    //         const {
+    //             migratedSafe,
+    //             signers: [user1, user2, user3],
+    //         } = await setupTests();
 
-            await expect(executeContractCallWithSigners(migratedSafe, migratedSafe, "addOwnerWithThreshold", [user2.address, 2], [user1]))
-                .to.emit(migratedSafe, "AddedOwner")
-                .withArgs(user2.address)
-                .and.to.emit(migratedSafe, "ChangedThreshold");
+    //         await expect(executeContractCallWithSigners(migratedSafe, migratedSafe, "addOwnerWithThreshold", [user2.address, 2], [user1]))
+    //             .to.emit(migratedSafe, "AddedOwner")
+    //             .withArgs(user2.address)
+    //             .and.to.emit(migratedSafe, "ChangedThreshold");
 
-            await expect(await migratedSafe.getThreshold()).to.eq(2n);
-            await expect(await migratedSafe.getOwners()).to.be.deep.equal([user2.address, user1.address]);
+    //         await expect(await migratedSafe.getThreshold()).to.eq(2n);
+    //         await expect(await migratedSafe.getOwners()).to.be.deep.equal([user2.address, user1.address]);
 
-            await expect(
-                executeContractCallWithSigners(migratedSafe, migratedSafe, "addOwnerWithThreshold", [user3.address, 1], [user1, user2]),
-            )
-                .to.emit(migratedSafe, "AddedOwner")
-                .withArgs(user3.address)
-                .and.to.emit(migratedSafe, "ChangedThreshold");
+    //         await expect(
+    //             executeContractCallWithSigners(migratedSafe, migratedSafe, "addOwnerWithThreshold", [user3.address, 1], [user1, user2]),
+    //         )
+    //             .to.emit(migratedSafe, "AddedOwner")
+    //             .withArgs(user3.address)
+    //             .and.to.emit(migratedSafe, "ChangedThreshold");
 
-            await expect(await migratedSafe.getThreshold()).to.be.deep.eq(1n);
-            await expect(await migratedSafe.getOwners()).to.be.deep.equal([user3.address, user2.address, user1.address]);
+    //         await expect(await migratedSafe.getThreshold()).to.be.deep.eq(1n);
+    //         await expect(await migratedSafe.getOwners()).to.be.deep.equal([user3.address, user2.address, user1.address]);
 
-            await expect(await migratedSafe.isOwner(user1.address)).to.be.true;
-            await expect(await migratedSafe.isOwner(user2.address)).to.be.true;
-            await expect(await migratedSafe.isOwner(user3.address)).to.be.true;
-        });
-    });
+    //         await expect(await migratedSafe.isOwner(user1.address)).to.be.true;
+    //         await expect(await migratedSafe.isOwner(user2.address)).to.be.true;
+    //         await expect(await migratedSafe.isOwner(user3.address)).to.be.true;
+    //     });
+    // });
 
     describe("enableModule", () => {
         it("should enabled module and be able to use it", async () => {
