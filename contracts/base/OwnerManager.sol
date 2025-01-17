@@ -29,11 +29,11 @@ abstract contract OwnerManager is IOwnerManager {
     function setupOwners(address[] memory _owners, uint256 _threshold) internal {
         // Threshold can only be 0 at initialization.
         // Check ensures that the setup function can only be called once.
-        if (threshold > 0) revertWithInternalError("GS500");
+        if (threshold > 0) revertWithInternalError("GS200");
         // Validate that the threshold is smaller than the number of added owners.
-        if (_threshold > _owners.length) revertWithInternalError("GS501");
+        if (_threshold > _owners.length) revertWithInternalError("GS201");
         // There has to be at least one Safe owner.
-        if (_threshold == 0) revertWithInternalError("GS502");
+        if (_threshold == 0) revertWithInternalError("GS202");
         // Initializing Safe owners.
         address currentOwner = SENTINEL_OWNERS;
         uint256 ownersLength = _owners.length;
@@ -41,9 +41,9 @@ abstract contract OwnerManager is IOwnerManager {
             // Owner address cannot be null.
             address owner = _owners[i];
             if (owner == address(0) || owner == SENTINEL_OWNERS || owner == address(this) || currentOwner == owner)
-                revertWithInternalError("GS503");
+                revertWithInternalError("GS203");
             // No duplicate owners allowed.
-            if (owners[owner] != address(0)) revertWithInternalError("GS504");
+            if (owners[owner] != address(0)) revertWithInternalError("GS204");
             owners[currentOwner] = owner;
             currentOwner = owner;
         }
@@ -64,17 +64,17 @@ abstract contract OwnerManager is IOwnerManager {
         bytes calldata signature
     ) public override {
         // Verify caller is current owner
-        if (!isOwner(msg.sender)) revertWithInternalError("GS505");
+        if (!isOwner(msg.sender)) revertWithInternalError("GS205");
         
         // Verify new owners list is not empty
-        if (newOwners.length == 0) revertWithInternalError("GS506");
+        if (newOwners.length == 0) revertWithInternalError("GS206");
         
         // Verify new threshold is valid
-        if (newThreshold == 0 || newThreshold > newOwners.length) revertWithInternalError("GS507");
+        if (newThreshold == 0 || newThreshold > newOwners.length) revertWithInternalError("GS207");
         
         // Verify list is sorted
         for (uint256 i = 1; i < newOwners.length; i++) {
-            if (newOwners[i] <= newOwners[i-1]) revertWithInternalError("GS508");
+            if (newOwners[i] <= newOwners[i-1]) revertWithInternalError("GS208");
         }
         
         // Create hash of update
@@ -82,7 +82,7 @@ abstract contract OwnerManager is IOwnerManager {
         
         // Verify signature
         address signer = recoverSigner(updateHash, signature);
-        if (signer != msg.sender) revertWithInternalError("GS509");
+        if (signer != msg.sender) revertWithInternalError("GS209");
         
         // Record approval
         approvedOwnersHashes[msg.sender][updateHash] = 1;
@@ -112,7 +112,7 @@ abstract contract OwnerManager is IOwnerManager {
             for (uint256 i = 0; i < newOwners.length; i++) {
                 address owner = newOwners[i];
                 if (owner == address(0) || owner == SENTINEL_OWNERS || owner == address(this))
-                    revertWithInternalError("GS510");
+                    revertWithInternalError("GS210");
                 owners[currentOwner] = owner;
                 currentOwner = owner;
             }
@@ -139,7 +139,7 @@ abstract contract OwnerManager is IOwnerManager {
         bytes32 s;
         uint8 v;
         
-        if (signature.length != 65) revertWithInternalError("GS511");
+        if (signature.length != 65) revertWithInternalError("GS211");
         
         bytes32 ethSignedMessageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", hash));
         assembly {
@@ -149,7 +149,7 @@ abstract contract OwnerManager is IOwnerManager {
         }
         
         if (v < 27) v += 27;
-        if (v != 27 && v != 28) revertWithInternalError("GS512");
+        if (v != 27 && v != 28) revertWithInternalError("GS212");
         
         return ecrecover(ethSignedMessageHash, v, r, s);
     }

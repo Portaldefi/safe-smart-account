@@ -27,7 +27,7 @@ describe("OwnerManager", () => {
             const hash = ethers.solidityPackedKeccak256(["uint256", "uint256", "address[]"], [nonce, newThreshold, newOwners]);
             const signature = await user2.signMessage(ethers.getBytes(hash));
 
-            await expect(safe.connect(user2).updateOwners(newThreshold, newOwners, signature)).to.be.revertedWith("GS505");
+            await expect(safe.connect(user2).updateOwners(newThreshold, newOwners, signature)).to.be.revertedWith("GS205");
         });
 
         it("cannot update with empty owners list", async () => {
@@ -43,7 +43,7 @@ describe("OwnerManager", () => {
             const hash = ethers.solidityPackedKeccak256(["uint256", "uint256", "address[]"], [nonce, newThreshold, newOwners]);
             const signature = await user1.signMessage(ethers.getBytes(hash));
 
-            await expect(safe.connect(user1).updateOwners(newThreshold, newOwners, signature)).to.be.revertedWith("GS506");
+            await expect(safe.connect(user1).updateOwners(newThreshold, newOwners, signature)).to.be.revertedWith("GS206");
         });
 
         it("cannot update with invalid threshold", async () => {
@@ -59,7 +59,7 @@ describe("OwnerManager", () => {
             const hash = ethers.solidityPackedKeccak256(["uint256", "uint256", "address[]"], [nonce, newThreshold, newOwners]);
             const signature = await user1.signMessage(ethers.getBytes(hash));
 
-            await expect(safe.connect(user1).updateOwners(newThreshold, newOwners, signature)).to.be.revertedWith("GS507");
+            await expect(safe.connect(user1).updateOwners(newThreshold, newOwners, signature)).to.be.revertedWith("GS207");
         });
 
         it("updates owners when threshold of approvals reached", async () => {
