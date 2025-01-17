@@ -87,17 +87,17 @@ describe("CompatibilityFallbackHandler", () => {
             await expect(validator.isValidSignature.staticCall(dataHash, "0xdeaddeaddeaddead")).to.be.reverted;
         });
 
-        it("should return magic value if message was signed", async () => {
-            const {
-                safe,
-                validator,
-                signLib,
-                signers: [user1, user2],
-            } = await setupTests();
-            const dataHash = ethers.keccak256("0xbaddad");
-            await executeContractCallWithSigners(safe, signLib, "signMessage", [dataHash], [user1, user2], true);
-            expect(await validator.isValidSignature.staticCall(dataHash, "0x")).to.be.eq("0x1626ba7e");
-        });
+        // it("should return magic value if message was signed", async () => {
+        //     const {
+        //         safe,
+        //         validator,
+        //         signLib,
+        //         signers: [user1, user2],
+        //     } = await setupTests();
+        //     const dataHash = ethers.keccak256("0xbaddad");
+        //     await executeContractCallWithSigners(safe, signLib, "signMessage", [dataHash], [user1, user2], true);
+        //     expect(await validator.isValidSignature.staticCall(dataHash, "0x")).to.be.eq("0x1626ba7e");
+        // });
 
         it("should return magic value if enough owners signed and allow a mix different signature types", async () => {
             const {

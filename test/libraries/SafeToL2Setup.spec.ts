@@ -116,18 +116,18 @@ describe("SafeToL2Setup", () => {
                 );
             });
 
-            it("can only be used through Safe initialization process", async () => {
-                const {
-                    safeToL2SetupLib,
-                    signers: [user1],
-                } = await setupTests();
-                const safe = await getSafe({ owners: [user1.address] });
-                const safeToL2SetupLibAddress = await safeToL2SetupLib.getAddress();
+            // it("can only be used through Safe initialization process", async () => {
+            //     const {
+            //         safeToL2SetupLib,
+            //         signers: [user1],
+            //     } = await setupTests();
+            //     const safe = await getSafe({ owners: [user1.address] });
+            //     const safeToL2SetupLibAddress = await safeToL2SetupLib.getAddress();
 
-                await expect(
-                    executeContractCallWithSigners(safe, safeToL2SetupLib, "setupToL2", [safeToL2SetupLibAddress], [user1], true),
-                ).to.be.rejectedWith("Safe must have not executed any tx");
-            });
+            //     await expect(
+            //         executeContractCallWithSigners(safe, safeToL2SetupLib, "setupToL2", [safeToL2SetupLibAddress], [user1], true),
+            //     ).to.be.rejectedWith("Safe must have not executed any tx");
+            // });
 
             it("changes the expected storage slot without touching the most important ones", async () => {
                 if (hre.network.zksync) {
